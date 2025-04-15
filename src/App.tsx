@@ -1,5 +1,4 @@
 // src/App.tsx
-import PDFRenderer from "./components/PDFViewer";
 import TextRenderer from "./components/TextReader";
 function App() {
   return (
