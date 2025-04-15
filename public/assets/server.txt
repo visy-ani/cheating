@@ -1,991 +1,613 @@
-/**
- * REACT OPTIMIZATION TECHNIQUES - COMPREHENSIVE CODE EXAMPLES
- * 
- * This file contains practical code examples for various React optimization techniques,
- * including useMemo, useRef, useCallback, React.lazy, and Context API implementations.
- */
+# React Optimization Patterns and Techniques
 
-// ========================================================================
-// 1. MEMOIZED FIBONACCI (useMemo)
-// ========================================================================
+## 1. Memoized Fibonacci (useMemo)
+
+### 🔍 Problem
+We want to calculate the nth Fibonacci number. Since Fibonacci is a computationally expensive recursive operation, we want to avoid recalculating it on every render.
+
+### 💡 Concept: useMemo
+`useMemo` caches the result of a computation and only re-evaluates it when its dependencies change.
+
+### 🧠 Approach
+- Use `useMemo` to wrap the Fibonacci calculation
+- Only recompute if the input `n` changes
+
+### ✅ Code
+```jsx
 import React, { useState, useMemo } from 'react';
 
-function FibonacciCalculator() {
-  const [number, setNumber] = useState(0);
-  const [renderCount, setRenderCount] = useState(0);
-
-  // Force re-render button to demonstrate memoization
-  const forceRender = () => setRenderCount(prev => prev + 1);
-
-  // Expensive recursive Fibonacci calculation
-  const calculateFibonacci = (n) => {
-    if (n <= 1) return n;
-    console.log(`Computing Fibonacci for ${n}`); // Log to show when calculation happens
-    return calculateFibonacci(n - 1) + calculateFibonacci(n - 2);
-  };
-
-  // Memoize the result - only recalculates when `number` changes
-  const fibResult = useMemo(() => calculateFibonacci(number), [number]);
-
-  return (
-    <div>
-      <h2>Fibonacci Calculator (with useMemo)</h2>
-      <div>
-        <label>
-          Enter a number:
-          <input
-            type="number"
-            value={number}
-            onChange={(e) => setNumber(parseInt(e.target.value) || 0)}
-            min="0"
-            max="40"
-          />
-        </label>
-      </div>
-      <p>
-        Fibonacci of {number} is: <strong>{fibResult}</strong>
-      </p>
-      <p>Component render count: {renderCount}</p>
-      <button onClick={forceRender}>Force Re-render</button>
-      <p><em>Note: Check console to see when calculation runs</em></p>
-    </div>
-  );
+function fibonacci(n) {
+  if (n <= 1) return n;
+  return fibonacci(n - 1) + fibonacci(n - 2);
 }
 
-// ========================================================================
-// 2. FILTER USERS LIST (useMemo)
-// ========================================================================
-import React, { useState, useMemo } from 'react';
-
-function UserSearch() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [renderCount, setRenderCount] = useState(0);
-
-  // Force re-render button to demonstrate memoization
-  const forceRender = () => setRenderCount(prev => prev + 1);
-
-  // Generate large dataset (would typically come from API)
-  const generateUsers = () => {
-    console.log('Generating 10,000 users'); // Log when generation happens
-    const users = [];
-    for (let i = 0; i < 10000; i++) {
-      users.push(`User ${i} ${Math.random().toString(36).substring(7)}`);
-    }
-    return users;
-  };
-
-  // All users array - in real app, this would come from props or API
-  const allUsers = useMemo(() => generateUsers(), []);
-
-  // Memoized filtered users - only updates when searchTerm changes
-  const filteredUsers = useMemo(() => {
-    console.log('Filtering users'); // Log when filtering happens
-    return allUsers.filter(user => 
-      user.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [searchTerm, allUsers]);
-
-  return (
-    <div>
-      <h2>User Search (with useMemo)</h2>
-      <input
-        type="text"
-        placeholder="Search users..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-      />
-      <p>Found {filteredUsers.length} users</p>
-      <p>Component render count: {renderCount}</p>
-      <button onClick={forceRender}>Force Re-render</button>
-      
-      <div style={{ maxHeight: '200px', overflow: 'auto' }}>
-        <ul>
-          {/* Showing only first 100 results for performance */}
-          {filteredUsers.slice(0, 100).map((user, index) => (
-            <li key={index}>{user}</li>
-          ))}
-          {filteredUsers.length > 100 && (
-            <li>...and {filteredUsers.length - 100} more</li>
-          )}
-        </ul>
-      </div>
-    </div>
-  );
-}
-
-// ========================================================================
-// 3. DEBOUNCED SEARCH (useRef)
-// ========================================================================
-import React, { useState, useRef, useEffect } from 'react';
-
-function DebouncedSearchBar() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [results, setResults] = useState([]);
-  const [isSearching, setIsSearching] = useState(false);
+export default function FibonacciCalculator() {
+  const [num, setNum] = useState(0);
+  const result = useMemo(() => fibonacci(num), [num]);
   
-  // Using useRef to store the timeout ID
-  const timeoutRef = useRef(null);
-
-  // Simulate API call
-  const searchAPI = async (term) => {
-    setIsSearching(true);
-    console.log(`Searching API for: ${term}`);
-    
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Mock results
-    const mockResults = Array(5).fill().map((_, i) => 
-      `Result ${i + 1} for "${term}"`
-    );
-    
-    setResults(mockResults);
-    setIsSearching(false);
-  };
-
-  // Handle input change with debounce
-  const handleInputChange = (e) => {
-    const value = e.target.value;
-    setSearchTerm(value);
-    
-    // Clear the previous timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-    
-    // Set a new timeout
-    timeoutRef.current = setTimeout(() => {
-      if (value.trim()) {
-        searchAPI(value);
-      } else {
-        setResults([]);
-      }
-    }, 500); // 500ms debounce
-  };
-
-  // Clean up timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-    };
-  }, []);
-
   return (
     <div>
-      <h2>Debounced Search (with useRef)</h2>
       <input
-        type="text"
-        placeholder="Search..."
-        value={searchTerm}
-        onChange={handleInputChange}
+        type="number"
+        value={num}
+        onChange={e => setNum(+e.target.value)}
       />
-      
-      {isSearching && <p>Searching...</p>}
-      
+      <p>Fibonacci({num}) = {result}</p>
+    </div>
+  );
+}
+```
+
+## 2. Filter Users List (useMemo)
+
+### 🔍 Problem
+Filter a large array (10,000+ names) based on user search input without recomputing on every render.
+
+### 💡 Concept: useMemo
+This avoids re-filtering the entire list unless the search term changes.
+
+### 🧠 Approach
+- Generate the users once (outside component or in useMemo without dependencies)
+- Use `useMemo` for filtered results depending on `searchTerm`
+
+### ✅ Code
+```jsx
+import React, { useState, useMemo } from 'react';
+
+const users = Array.from({ length: 10000 }, (_, i) => `User ${i}`);
+
+export default function UserSearch() {
+  const [searchTerm, setSearchTerm] = useState('');
+  
+  const filtered = useMemo(() => {
+    return users.filter(name =>
+      name.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [searchTerm]);
+  
+  return (
+    <div>
+      <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
       <ul>
-        {results.map((result, index) => (
-          <li key={index}>{result}</li>
+        {filtered.slice(0, 20).map((name, idx) => (
+          <li key={idx}>{name}</li>
         ))}
       </ul>
-      
-      <p><em>
-        Try typing quickly - API calls are debounced to prevent excessive requests
-      </em></p>
     </div>
   );
 }
+```
 
-// ========================================================================
-// 4. SAVE INPUT WITHOUT RE-RENDER (useRef)
-// ========================================================================
-import React, { useState, useRef } from 'react';
+## 3. Debounced Search (useRef)
 
-function NonRenderingForm() {
-  const [submittedData, setSubmittedData] = useState({
-    name: '',
-    email: '',
-    message: ''
-  });
-  const [renderCount, setRenderCount] = useState(0);
+### 🔍 Problem
+Call an API only after user stops typing for 500ms.
+
+### 💡 Concept: useRef
+Store the timeout ID across renders without triggering re-renders.
+
+### 🧠 Approach
+- Store `setTimeout`'s ID in a ref
+- Reset timer on every keypress
+
+### ✅ Code
+```jsx
+import React, { useRef, useState } from 'react';
+
+export default function DebouncedSearch() {
+  const [term, setTerm] = useState('');
+  const timer = useRef(null);
   
-  // References to form inputs
-  const nameRef = useRef(null);
-  const emailRef = useRef(null);
-  const messageRef = useRef(null);
-  
-  // Force re-render to demonstrate the component doesn't re-render during typing
-  const forceRender = () => setRenderCount(prev => prev + 1);
-  
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    // Get values from refs
-    const formData = {
-      name: nameRef.current.value,
-      email: emailRef.current.value,
-      message: messageRef.current.value
-    };
-    
-    // Update state only on submit
-    setSubmittedData(formData);
-    
-    console.log('Form submitted:', formData);
+  const handleChange = (e) => {
+    const value = e.target.value;
+    setTerm(value);
+    clearTimeout(timer.current);
+    timer.current = setTimeout(() => {
+      console.log('Searching for:', value);
+    }, 500);
   };
   
-  console.log('Component rendered'); // Log when component renders
+  return <input value={term} onChange={handleChange} />;
+}
+```
+
+## 4. Save Input without Re-render (useRef)
+
+### 🔍 Problem
+Typing in an input should not re-render the component until a submit button is clicked.
+
+### 💡 Concept: useRef
+Avoid state updates during typing by using a ref to hold the value.
+
+### 🧠 Approach
+- Use `inputRef.current.value` instead of `useState`
+- Only trigger re-render on submit
+
+### ✅ Code
+```jsx
+import React, { useRef, useState } from 'react';
+
+export default function UncontrolledForm() {
+  const inputRef = useRef();
+  const [submitted, setSubmitted] = useState('');
+  
+  const handleSubmit = () => {
+    setSubmitted(inputRef.current.value);
+  };
   
   return (
     <div>
-      <h2>Non-Rendering Form (with useRef)</h2>
-      <p>Render count: {renderCount}</p>
-      <button onClick={forceRender}>Force Re-render</button>
-      
-      <form onSubmit={handleSubmit}>
-        <div>
-          <label htmlFor="name">Name:</label>
-          <input
-            id="name"
-            type="text"
-            ref={nameRef}
-            defaultValue={submittedData.name}
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="email">Email:</label>
-          <input
-            id="email"
-            type="email"
-            ref={emailRef}
-            defaultValue={submittedData.email}
-          />
-        </div>
-        
-        <div>
-          <label htmlFor="message">Message:</label>
-          <textarea
-            id="message"
-            ref={messageRef}
-            defaultValue={submittedData.message}
-          />
-        </div>
-        
-        <button type="submit">Submit</button>
-      </form>
-      
-      {Object.values(submittedData).some(value => value) && (
-        <div>
-          <h3>Submitted Data:</h3>
-          <p>Name: {submittedData.name}</p>
-          <p>Email: {submittedData.email}</p>
-          <p>Message: {submittedData.message}</p>
-        </div>
-      )}
-      
-      <p><em>
-        Notice that typing in the form fields doesn't cause re-renders.
-        Check the console to confirm this.
-      </em></p>
+      <input ref={inputRef} />
+      <button onClick={handleSubmit}>Submit</button>
+      <p>Submitted Value: {submitted}</p>
     </div>
   );
 }
+```
 
-// ========================================================================
-// 5. STOPWATCH WITH REF (useRef)
-// ========================================================================
-import React, { useState, useRef, useEffect } from 'react';
+## 5. Stopwatch with Ref (useRef)
 
-function Stopwatch() {
+### 🔍 Problem
+Build a simple stopwatch using `setInterval`. Avoid stale closures.
+
+### 💡 Concept: useRef
+Use it to store the interval ID so it survives re-renders without causing them.
+
+### 🧠 Approach
+- Start interval with `intervalRef.current = setInterval(...)`
+- Use `clearInterval` to pause/reset
+
+### ✅ Code
+```jsx
+import React, { useState, useRef } from 'react';
+
+export default function Stopwatch() {
   const [time, setTime] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-  
-  // Using useRef to store the interval ID
   const intervalRef = useRef(null);
   
-  // Start the stopwatch
   const start = () => {
-    if (!isRunning) {
-      setIsRunning(true);
-      intervalRef.current = setInterval(() => {
-        setTime(prevTime => prevTime + 10); // Update every 10ms
-      }, 10);
-    }
+    if (intervalRef.current !== null) return;
+    intervalRef.current = setInterval(() => setTime(t => t + 1), 1000);
   };
   
-  // Pause the stopwatch
   const pause = () => {
-    if (isRunning) {
-      clearInterval(intervalRef.current);
-      setIsRunning(false);
-    }
+    clearInterval(intervalRef.current);
+    intervalRef.current = null;
   };
   
-  // Reset the stopwatch
   const reset = () => {
-    clearInterval(intervalRef.current);
-    setIsRunning(false);
+    pause();
     setTime(0);
   };
   
-  // Clean up interval on unmount
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
-  
-  // Format the time
-  const formatTime = () => {
-    const minutes = Math.floor((time / 60000) % 60);
-    const seconds = Math.floor((time / 1000) % 60);
-    const milliseconds = Math.floor((time / 10) % 100);
-    
-    return `${minutes.toString().padStart(2, '0')}:${
-      seconds.toString().padStart(2, '0')}.${
-      milliseconds.toString().padStart(2, '0')}`;
-  };
-  
   return (
     <div>
-      <h2>Stopwatch (with useRef)</h2>
-      <div style={{ fontSize: '2rem', fontFamily: 'monospace' }}>
-        {formatTime()}
-      </div>
-      
-      <div>
-        {!isRunning ? (
-          <button onClick={start}>Start</button>
-        ) : (
-          <button onClick={pause}>Pause</button>
-        )}
-        <button onClick={reset}>Reset</button>
-      </div>
-      
-      <p><em>
-        The interval is stored in a ref to persist across renders and
-        enable proper cleanup.
-      </em></p>
+      <h2>{time}s</h2>
+      <button onClick={start}>Start</button>
+      <button onClick={pause}>Pause</button>
+      <button onClick={reset}>Reset</button>
     </div>
   );
 }
+```
 
-// ========================================================================
-// 6. CALLBACK OPTIMIZER (useCallback)
-// ========================================================================
-import React, { useState, useCallback, memo } from 'react';
+## 6. Callback Optimizer (useCallback)
 
-// Child component that will get memoized
-const ExpensiveComponent = memo(({ onClick, id }) => {
-  console.log(`ExpensiveComponent ${id} rendered`);
-  
-  return (
-    <div style={{ padding: '10px', margin: '10px', border: '1px solid #ccc' }}>
-      <p>Expensive Component {id}</p>
-      <button onClick={() => onClick(id)}>Click me</button>
-    </div>
-  );
+### 🔍 Problem
+When passing a function as a prop to a memoized child (`React.memo()`), a new function reference on every render causes unnecessary re-renders.
+
+### 💡 Concept: useCallback
+`useCallback(fn, deps)` returns a memoized version of the callback that only changes if dependencies change.
+
+### 🧠 Approach
+- Wrap the function using `useCallback`
+- Use `React.memo` for child to observe optimizations
+
+### ✅ Code
+```jsx
+import React, { useState, useCallback } from 'react';
+
+const Child = React.memo(({ onClick }) => {
+  console.log("Child Rendered");
+  return <button onClick={onClick}>Click Me</button>;
 });
 
-function CallbackOptimizerParent() {
+export default function Parent() {
   const [count, setCount] = useState(0);
-  const [selectedId, setSelectedId] = useState(null);
   
-  // Without useCallback, this would be recreated on every render
-  // and cause ExpensiveComponent to re-render unnecessarily
-  const handleClick = useCallback((id) => {
-    console.log(`Button ${id} clicked`);
-    setSelectedId(id);
-  }, []); // Empty dependencies - function never changes
-  
-  // Increment count to force parent re-render
-  const incrementCount = () => setCount(c => c + 1);
+  const handleClick = useCallback(() => {
+    console.log("Clicked");
+  }, []); // No dependencies
   
   return (
     <div>
-      <h2>Callback Optimizer (with useCallback)</h2>
-      <p>Parent render count: {count}</p>
-      <p>Selected ID: {selectedId}</p>
-      
-      <button onClick={incrementCount}>
-        Force Parent Re-render
-      </button>
-      
-      <div>
-        <ExpensiveComponent id={1} onClick={handleClick} />
-        <ExpensiveComponent id={2} onClick={handleClick} />
-        <ExpensiveComponent id={3} onClick={handleClick} />
-      </div>
-      
-      <p><em>
-        Check the console - child components don't re-render when parent does,
-        because the callback function is memoized.
-      </em></p>
+      <p>Parent Count: {count}</p>
+      <button onClick={() => setCount(c => c + 1)}>Increment</button>
+      <Child onClick={handleClick} />
     </div>
   );
 }
+```
 
-// ========================================================================
-// 7. MEMOIZED TOGGLE HANDLER (useCallback)
-// ========================================================================
-import React, { useState, useCallback, memo } from 'react';
+## 7. Memoized Toggle Handler (useCallback)
 
-// Memoized toggle button component
-const MemoizedToggleButton = memo(({ onToggle, isOn }) => {
-  console.log('Toggle Button rendered');
-  
-  return (
-    <button onClick={onToggle}>
-      {isOn ? 'Turn OFF' : 'Turn ON'}
-    </button>
-  );
-});
+### 🔍 Problem
+Create a toggle button without recreating the toggle function on every render.
 
-function ToggleWithCallback() {
-  const [isOn, setIsOn] = useState(false);
-  const [renderCount, setRenderCount] = useState(0);
-  
-  // Memoized toggle handler - only created once
-  const toggle = useCallback(() => {
-    setIsOn(prev => !prev);
-  }, []); // Empty dependency array - never recreated
-  
-  // Force re-render to demonstrate memoization
-  const forceRender = () => setRenderCount(c => c + 1);
+### 💡 Concept: useCallback
+Keeps a stable function reference across renders.
+
+### 🧠 Approach
+- Use `useCallback` to wrap the toggle function
+- Prevents unnecessary updates in child components receiving this function
+
+### ✅ Code
+```jsx
+import React, { useState, useCallback } from 'react';
+
+function ToggleButton({ onToggle }) {
+  console.log("ToggleButton Rendered");
+  return <button onClick={onToggle}>Toggle</button>;
+}
+
+const MemoToggleButton = React.memo(ToggleButton);
+
+export default function ToggleParent() {
+  const [on, setOn] = useState(false);
+  const toggle = useCallback(() => setOn(o => !o), []);
   
   return (
     <div>
-      <h2>Memoized Toggle Handler (with useCallback)</h2>
-      <p>Parent render count: {renderCount}</p>
-      <p>Status: {isOn ? 'ON' : 'OFF'}</p>
-      
-      <MemoizedToggleButton onToggle={toggle} isOn={isOn} />
-      <button onClick={forceRender}>Force Parent Re-render</button>
-      
-      <p><em>
-        Check the console - the toggle button only re-renders when its props
-        change, not when the parent re-renders.
-      </em></p>
+      <p>{on ? "ON" : "OFF"}</p>
+      <MemoToggleButton onToggle={toggle} />
     </div>
   );
 }
+```
 
-// ========================================================================
-// 8. LAZY LOAD DASHBOARD (React.lazy)
-// ========================================================================
-import React, { Suspense, lazy, useState } from 'react';
+## 8. Lazy Load Dashboard (React.lazy)
 
-// Lazy-loaded dashboard component
-const Dashboard = lazy(() => {
-  // Adding artificial delay to simulate network latency
-  return new Promise(resolve => {
-    setTimeout(() => {
-      resolve(import('./Dashboard'));
-    }, 1500);
-  });
-});
+### 🔍 Problem
+Only load the Dashboard component when the user navigates to `/dashboard`.
 
-// For demonstration - this would normally be in a separate file
-// Content of Dashboard.js
-const DashboardComponent = () => (
-  <div>
-    <h3>Dashboard Content</h3>
-    <p>This component was loaded lazily!</p>
-    <div style={{ display: 'flex', gap: '20px' }}>
-      <div style={{ flex: 1, padding: '20px', background: '#f0f0f0' }}>
-        <h4>Analytics</h4>
-        <p>Chart placeholder</p>
-      </div>
-      <div style={{ flex: 1, padding: '20px', background: '#f0f0f0' }}>
-        <h4>Recent Activity</h4>
-        <ul>
-          <li>Item 1</li>
-          <li>Item 2</li>
-          <li>Item 3</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-);
+### 💡 Concept: React.lazy + Suspense
+- Code-splitting for performance
+- `React.lazy` defers loading until needed
+- `Suspense` shows fallback during loading
 
-function LazyLoadApp() {
-  const [showDashboard, setShowDashboard] = useState(false);
-  
+### 🧠 Approach
+- Use `React.lazy()` to import Dashboard
+- Wrap it in `<Suspense fallback={...}>`
+
+### ✅ Code
+```jsx
+import React, { Suspense } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+
+const Dashboard = React.lazy(() => import('./Dashboard'));
+
+export default function App() {
+  return (
+    <Router>
+      <Suspense fallback={<p>Loading...</p>}>
+        <Routes>
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Routes>
+      </Suspense>
+    </Router>
+  );
+}
+```
+
+## 9. Lazy Import Image Gallery (React.lazy + Suspense)
+
+### 🔍 Problem
+You want to lazy-load individual image components to reduce initial bundle size.
+
+### 💡 Concept: Lazy-load components individually.
+
+### 🧠 Approach
+- Create `<LazyImage />` components using `React.lazy`
+- Wrap each in `Suspense`
+
+### ✅ Code
+```jsx
+import React, { Suspense } from 'react';
+
+const LazyImage = React.lazy(() => import('./LazyImage'));
+
+export default function Gallery() {
   return (
     <div>
-      <h2>Lazy Load Dashboard (React.lazy)</h2>
-      <button onClick={() => setShowDashboard(!showDashboard)}>
-        {showDashboard ? 'Hide Dashboard' : 'Show Dashboard'}
-      </button>
-      
-      {showDashboard && (
-        <Suspense fallback={<div>Loading Dashboard...</div>}>
-          <Dashboard />
-        </Suspense>
-      )}
-      
-      <p><em>
-        The Dashboard component is only loaded when needed,
-        reducing the initial bundle size.
-      </em></p>
+      <Suspense fallback={<p>Loading Image...</p>}>
+        <LazyImage src="img1.jpg" />
+        <LazyImage src="img2.jpg" />
+      </Suspense>
     </div>
   );
 }
+```
 
-// Mock export for the Dashboard component
-export const Dashboard = DashboardComponent;
+## 10. Theme Context (Context API)
 
-// ========================================================================
-// 9. LAZY IMPORT IMAGE GALLERY (React.lazy + Suspense)
-// ========================================================================
-import React, { Suspense, lazy } from 'react';
+### 🔍 Problem
+Implement global theme switching.
 
-// Lazy-loaded image components
-// In a real app, these would be in separate files
-const LazyImage1 = lazy(() => import('./LazyImage1'));
-const LazyImage2 = lazy(() => import('./LazyImage2'));
-const LazyImage3 = lazy(() => import('./LazyImage3'));
+### 💡 Concept: Context API
+Allows sharing state across many components without prop drilling.
 
-// Mock image components for demonstration
-const Image1 = () => (
-  <div style={{ width: '300px', height: '200px', background: '#f0f0f0' }}>
-    <p>Image 1 Content</p>
-  </div>
-);
+### 🧠 Approach
+- Create `ThemeContext` with a toggle function
+- Wrap root component with `ThemeProvider`
 
-const Image2 = () => (
-  <div style={{ width: '300px', height: '200px', background: '#e0e0e0' }}>
-    <p>Image 2 Content</p>
-  </div>
-);
+### ✅ Code
+```jsx
+import React, { createContext, useContext, useState } from 'react';
 
-const Image3 = () => (
-  <div style={{ width: '300px', height: '200px', background: '#d0d0d0' }}>
-    <p>Image 3 Content</p>
-  </div>
-);
-
-function LazyImageGallery() {
-  return (
-    <div>
-      <h2>Lazy Import Image Gallery (React.lazy + Suspense)</h2>
-      
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-        <Suspense fallback={<div>Loading Image 1...</div>}>
-          <LazyImage1 />
-        </Suspense>
-        
-        <Suspense fallback={<div>Loading Image 2...</div>}>
-          <LazyImage2 />
-        </Suspense>
-        
-        <Suspense fallback={<div>Loading Image 3...</div>}>
-          <LazyImage3 />
-        </Suspense>
-      </div>
-      
-      <p><em>
-        Each image is lazily loaded independently, so the page can show
-        content incrementally as it loads.
-      </em></p>
-    </div>
-  );
-}
-
-// Mock exports for LazyImage components
-export const LazyImage1 = Image1;
-export const LazyImage2 = Image2;
-export const LazyImage3 = Image3;
-
-// ========================================================================
-// 10. THEME CONTEXT (Context API)
-// ========================================================================
-import React, { createContext, useState, useContext } from 'react';
-
-// Create the Theme Context
 const ThemeContext = createContext();
 
-// Theme Provider component
-function ThemeProvider({ children }) {
-  const [theme, setTheme] = useState('light');
-  
-  // Toggle between light and dark themes
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
-  
-  // Value object to be provided to consumers
-  const value = {
-    theme,
-    toggleTheme
-  };
+export function ThemeProvider({ children }) {
+  const [theme, setTheme] = useState("light");
+  const toggle = () => setTheme(t => (t === "light" ? "dark" : "light"));
   
   return (
-    <ThemeContext.Provider value={value}>
+    <ThemeContext.Provider value={{ theme, toggle }}>
       {children}
     </ThemeContext.Provider>
   );
 }
 
-// Custom hook to use the theme context
-function useTheme() {
-  const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
+export function useTheme() {
+  return useContext(ThemeContext);
 }
+```
 
-// Sample component that consumes the theme
-function ThemedButton() {
-  const { theme, toggleTheme } = useTheme();
-  
-  const buttonStyle = {
-    backgroundColor: theme === 'light' ? '#f0f0f0' : '#333',
-    color: theme === 'light' ? '#333' : '#f0f0f0',
-    padding: '10px 20px',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer'
-  };
-  
-  return (
-    <button style={buttonStyle} onClick={toggleTheme}>
-      Toggle Theme
-    </button>
-  );
-}
+## 11. Auth Context Setup (Context API)
 
-// Sample component that consumes the theme
-function ThemedPanel() {
-  const { theme } = useTheme();
-  
-  const panelStyle = {
-    backgroundColor: theme === 'light' ? '#fff' : '#222',
-    color: theme === 'light' ? '#333' : '#fff',
-    padding: '20px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    transition: 'all 0.3s ease'
-  };
-  
-  return (
-    <div style={panelStyle}>
-      <h3>Themed Panel</h3>
-      <p>This panel uses the current theme: {theme}</p>
-    </div>
-  );
-}
+### 🔍 Problem
+Manage login/logout globally.
 
-// Main app component that demonstrates theme context
-function ThemeApp() {
-  return (
-    <ThemeProvider>
-      <div>
-        <h2>Theme Context (Context API)</h2>
-        <ThemedButton />
-        <div style={{ marginTop: '20px' }}>
-          <ThemedPanel />
-        </div>
-      </div>
-    </ThemeProvider>
-  );
-}
+### 💡 Concept: Context to share auth state and logic.
 
-// ========================================================================
-// 11. AUTH CONTEXT SETUP (Context API)
-// ========================================================================
-import React, { createContext, useState, useContext } from 'react';
+### 🧠 Approach
+- Store `isAuthenticated`, `login`, `logout` in context
+- Wrap app with `AuthProvider`
 
-// Create the Auth Context
+### ✅ Code
+```jsx
+import React, { createContext, useContext, useState } from 'react';
+
 const AuthContext = createContext();
 
-// Auth Provider component
-function AuthProvider({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-  
-  // Login function
-  const login = (username, password) => {
-    // In a real app, you would validate credentials with an API
-    console.log(`Logging in with ${username} and ${password}`);
-    
-    // Mock authentication
-    if (username === 'user' && password === 'pass') {
-      setIsAuthenticated(true);
-      setUser({ username, name: 'Test User' });
-      return true;
-    }
-    
-    return false;
-  };
-  
-  // Logout function
-  const logout = () => {
-    setIsAuthenticated(false);
-    setUser(null);
-  };
-  
-  // Value object to be provided to consumers
-  const value = {
-    isAuthenticated,
-    user,
-    login,
-    logout
-  };
+export function AuthProvider({ children }) {
+  const [isAuthenticated, setAuth] = useState(false);
+  const login = () => setAuth(true);
+  const logout = () => setAuth(false);
   
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Custom hook to use the auth context
-function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-  return context;
+export function useAuth() {
+  return useContext(AuthContext);
 }
+```
 
-// Login Form component
-function LoginForm() {
-  const { isAuthenticated, login, logout, user } = useAuth();
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-  
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    setError('');
-    
-    const success = login(username, password);
-    if (!success) {
-      setError('Invalid credentials. Try user/pass');
-    }
-  };
-  
-  if (isAuthenticated) {
-    return (
-      <div>
-        <p>Welcome, {user.name}!</p>
-        <button onClick={logout}>Logout</button>
-      </div>
-    );
-  }
-  
-  return (
-    <form onSubmit={handleSubmit}>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      <div>
-        <label htmlFor="username">Username:</label>
-        <input
-          id="username"
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-      </div>
-      <div>
-        <label htmlFor="password">Password:</label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-      </div>
-      <button type="submit">Login</button>
-      <p><em>Hint: use "user" / "pass"</em></p>
-    </form>
-  );
-}
+## 12. Ref Focus Handler (useRef)
 
-// Protected content component
-function ProtectedContent() {
-  const { isAuthenticated } = useAuth();
-  
-  if (!isAuthenticated) {
-    return <p>Please log in to view this content.</p>;
-  }
-  
-  return (
-    <div>
-      <h3>Protected Content</h3>
-      <p>This content is only visible to authenticated users.</p>
-    </div>
-  );
-}
+### 🔍 Problem
+Focus an input field when a button is clicked.
 
-// Main app component that demonstrates auth context
-function AuthApp() {
-  return (
-    <AuthProvider>
-      <div>
-        <h2>Auth Context Setup (Context API)</h2>
-        <LoginForm />
-        <div style={{ marginTop: '20px' }}>
-          <ProtectedContent />
-        </div>
-      </div>
-    </AuthProvider>
-  );
-}
+### 💡 Concept: useRef
+Access the DOM directly.
 
-// ========================================================================
-// 12. REF FOCUS HANDLER (useRef)
-// ========================================================================
+### ✅ Code
+```jsx
 import React, { useRef } from 'react';
 
-function FocusInput() {
-  // Create a ref for the input element
-  const inputRef = useRef(null);
-  
-  // Focus the input when button is clicked
-  const handleFocus = () => {
-    inputRef.current.focus();
-  };
+export default function FocusInput() {
+  const inputRef = useRef();
+  const focus = () => inputRef.current.focus();
   
   return (
     <div>
-      <h2>Ref Focus Handler (useRef)</h2>
-      
-      <input
-        ref={inputRef}
-        type="text"
-        placeholder="This input will be focused"
-      />
-      
-      <button onClick={handleFocus}>
-        Focus Input
-      </button>
-      
-      <p><em>
-        The ref gives us direct access to the DOM element,
-        allowing us to call methods like focus().
-      </em></p>
+      <input ref={inputRef} />
+      <button onClick={focus}>Focus</button>
     </div>
   );
 }
+```
 
-// ========================================================================
-// 13. DYNAMIC FORM WITH REF (useRef)
-// ========================================================================
-import React, { useRef, useState } from 'react';
+## 13. Dynamic Form with Ref (useRef)
 
-function DynamicFormWithRef() {
-  const [fields, setFields] = useState(['field1', 'field2']);
-  const [formData, setFormData] = useState({});
+### 🔍 Problem
+Manage multiple input fields dynamically.
+
+### 💡 Concept: useRef([])
+Use array of refs for scalable access.
+
+### ✅ Code
+```jsx
+import React, { useRef } from 'react';
+
+export default function DynamicForm() {
+  const inputRefs = useRef([]);
   
-  // Create a ref that will hold an array of refs
-  const inputRefs = useRef({});
-  
-  // Add a new field
-  const addField = () => {
-    const newField = `field${fields.length + 1}`;
-    setFields([...fields, newField]);
-  };
-  
-  // Handle form submission
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    // Collect values from all refs
-    const data = {};
-    fields.forEach(field => {
-      data[field] = inputRefs.current[field].value;
+  const handleSubmit = () => {
+    inputRefs.current.forEach((ref, i) => {
+      console.log(`Input ${i}:`, ref.value);
     });
-    
-    // Update state with collected data
-    setFormData(data);
-    console.log('Form data:', data);
   };
   
   return (
     <div>
-      <h2>Dynamic Form with Ref (useRef)</h2>
-      
-      <form onSubmit={handleSubmit}>
-        {fields.map((field) => (
-          <div key={field}>
-            <label htmlFor={field}>{field}:</label>
-            <input
-              id={field}
-              type="text"
-              ref={el => inputRefs.current[field] = el}
-              defaultValue={formData[field] || ''}
-            />
-          </div>
-        ))}
-        
-        <div>
-          <button type="button" onClick={addField}>
-            Add Field
-          </button>
-          <button type="submit">
-            Submit
-          </button>
-        </div>
-      </form>
-      
-      {Object.keys(formData).length > 0 && (
-        <div>
-          <h3>Submitted Data:</h3>
-          <pre>{JSON.stringify(formData, null, 2)}</pre>
-        </div>
-      )}
-      
-      <p><em>
-        Using refs allows us to dynamically track form fields
-        without creating state for each field.
-      </em></p>
+      {[...Array(3)].map((_, i) => (
+        <input
+          key={i}
+          ref={el => (inputRefs.current[i] = el)}
+          placeholder={`Input ${i + 1}`}
+        />
+      ))}
+      <button onClick={handleSubmit}>Submit</button>
     </div>
   );
 }
+```
 
-// ========================================================================
-// 14. MEMOIZED COMPLEX SORT (useMemo)
-// ========================================================================
+## 14. Memoized Complex Sort (useMemo)
+
+### 🔍 Problem
+Avoid re-sorting a list unless sortBy changes.
+
+### 💡 Concept: useMemo
+
+### ✅ Code
+```jsx
 import React, { useState, useMemo } from 'react';
 
-function ComplexSortExample() {
-  const [sortBy, setSortBy] = useState('name');
-  const [renderCount, setRenderCount] = useState(0);
+const data = [
+  { name: "Zoe", age: 25 },
+  { name: "Alice", age: 30 },
+  { name: "Bob", age: 20 }
+];
+
+export default function SortableList() {
+  const [sortBy, setSortBy] = useState("name");
   
-  // Force re-render to demonstrate memoization
-  const forceRender = () => setRenderCount(c => c + 1);
+  const sortedData = useMemo(() => {
+    console.log("Sorting...");
+    return [...data].sort((a, b) => 
+      a[sortBy].localeCompare?.(b[sortBy]) ?? a[sortBy] - b[sortBy]
+    );
+  }, [sortBy]);
   
-  // Sample large dataset
-  const generateData = () => {
-    console.log('Generating large dataset'); // Log when generation occurs
-    const data = [];
-    for (let i = 0; i < 1000; i++) {
-      data.push({
-        id: i,
-        name: `Item ${i}`,
-        value: Math.floor(Math.random() * 1000),
-        date: new Date(Date.now() - Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000)
-      });
-    }
-    return data;
-  };
+  return (
+    <div>
+      <button onClick={() => setSortBy("name")}>Sort by Name</button>
+      <button onClick={() => setSortBy("age")}>Sort by Age</button>
+      <ul>
+        {sortedData.map((d, i) => (
+          <li key={i}>{d.name} - {d.age}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+## 15. Toggle Sidebar with Context (Context API)
+
+### ✅ Code
+```jsx
+import React, { createContext, useContext, useState } from 'react';
+
+const SidebarContext = createContext();
+
+export function SidebarProvider({ children }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const toggle = () => setIsOpen(prev => !prev);
   
-  // Original data
-  const data = useMemo(() => generateData(), []);
+  return (
+    <SidebarContext.Provider value={{ isOpen, toggle }}>
+      {children}
+    </SidebarContext.Provider>
+  );
+}
+
+export function useSidebar() {
+  return useContext(SidebarContext);
+}
+```
+
+## 16. Count Renders with Ref (useRef)
+
+### ✅ Code
+```jsx
+import React, { useRef } from 'react';
+
+export default function RenderCounter() {
+  const renderCount = useRef(1);
+  renderCount.current++;
   
-  // Complex sort function
-  const complexSort = (items, sortKey) => {
-    console.log(`Sorting by ${sortKey}`); // Log when sorting occurs
-    
-    return [...items].sort((a, b) => {
-      if (sortKey === 'name') {
-        return a.name.localeCompare(b.name);
-      } else if (sortKey === 'value') {
-        return a.value - b.value;
-      } else if (
+  return <div>Rendered {renderCount.current} times</div>;
+}
+```
+
+## 17. Lazy Load Routes (React.lazy + React Router)
+
+Same as #8 but for multiple routes:
+
+### ✅ Code
+```jsx
+const Home = React.lazy(() => import('./Home'));
+const About = React.lazy(() => import('./About'));
+
+<Suspense fallback={<div>Loading...</div>}>
+  <Routes>
+    <Route path="/" element={<Home />} />
+    <Route path="/about" element={<About />} />
+  </Routes>
+</Suspense>
+```
+
+## 18. Avoid Inline Function (useCallback)
+
+### ✅ Code
+```jsx
+const handleDelete = useCallback(() => {
+  console.log("Deleted");
+}, [id]);
+```
+
+This prevents re-creating the function every render.
+
+## 19. Custom Hook with useRef — usePrevious
+
+### ✅ Code
+```jsx
+import { useEffect, useRef } from 'react';
+
+export function usePrevious(value) {
+  const ref = useRef();
+  
+  useEffect(() => {
+    ref.current = value;
+  });
+  
+  return ref.current;
+}
+```
+
+Usage:
+```jsx
+const prevCount = usePrevious(count);
+```
+
+## 20. Context with Reducer (Context API + useReducer)
+
+### ✅ Code
+```jsx
+const CounterContext = createContext();
+
+const reducer = (state, action) => {
+  switch (action.type) {
+    case "INC": return { count: state.count + 1 };
+    case "DEC": return { count: state.count - 1 };
+    case "RESET": return { count: 0 };
+    default: return state;
+  }
+};
+
+export function CounterProvider({ children }) {
+  const [state, dispatch] = useReducer(reducer, { count: 0 });
+  
+  return (
+    <CounterContext.Provider value={{ state, dispatch }}>
+      {children}
+    </CounterContext.Provider>
+  );
+}
+```
